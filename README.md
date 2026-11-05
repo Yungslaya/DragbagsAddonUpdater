@@ -25,10 +25,35 @@ No account needed · Windows 10 / 11 · nothing to install
 
 If WoW is open during an update, type `/reload` in game.
 
-## Addons it keeps updated
+## The addons
 
-Every repo on [github.com/Yungslaya](https://github.com/Yungslaya) with a release zip, for example
-[ProfessionPal](https://github.com/Yungslaya/ProfessionPal), a profession guide for all 12 professions from 1 to 300.
+The updater installs and updates all of these. You can also grab any one on its own.
+
+### [ProfessionPal](https://github.com/Yungslaya/ProfessionPal) · beta
+
+**Every profession from 1 to 300, inside the game.** Type `/prof`.
+
+- Tells you the one thing to do next, like *"Make 25 × Bronze Warhammer"*.
+- Counts your bags and bank for every material you need.
+- Pins your next trainer on the map and keeps a shopping list.
+- Ranks the gear your profession can make for your class and role.
+- All 12 professions, gathering and crafting.
+
+[Get it](https://github.com/Yungslaya/ProfessionPal) · [Download zip](https://github.com/Yungslaya/ProfessionPal/releases/latest/download/ProfessionPal.zip)
+
+### [ProtAlerts](https://github.com/Yungslaya/ProtAlerts) · work in progress
+
+**Big, clear tank alerts for Protection Warrior and Paladin.** Type `/pa`.
+
+- Big icons for danger: low health, loose mobs, taunt and kick.
+- Health, rage/mana, threat and swing timer bars.
+- Range dot on your target: green = in melee, red = too far.
+- Makes your tank macros for you.
+- Display only. It never presses buttons for you.
+
+[Get it](https://github.com/Yungslaya/ProtAlerts) · [Download zip](https://github.com/Yungslaya/ProtAlerts/releases/latest/download/ProtAlerts.zip)
+
+New addons show up in the updater by themselves once they're on [github.com/Yungslaya](https://github.com/Yungslaya) with a release zip.
 
 ## How it works
 
