@@ -1,60 +1,56 @@
 # Dragbags Addon Updater
 
-**One click keeps every Yungslaya WoW: Forever addon up to date.** Set it once and it updates your addons by itself every time you log in to Windows.
+Keep your WoW: Forever addons together. Check versions, read what's new, and install updates in one window.
 
-### [⬇ Download Dragbags Addon Updater (zip)](https://github.com/Yungslaya/DragbagsAddonUpdater/releases/latest/download/DragbagsAddonUpdater.zip)
+### [Download the updater](https://github.com/Yungslaya/DragbagsAddonUpdater/releases/latest/download/DragbagsAddonUpdater.zip)
 
-No account needed · Windows 10 / 11 · nothing to install
+Windows 10 / 11. No GitHub account needed.
 
----
+## What's new
 
-## What it does
+**1.0.1:** Change notes inside the window, a release-page button, and clear labels for newer local copies. Older downloads cannot replace newer local versions.
 
-- **Finds your WoW: Forever AddOns folder** on its own (or you point it there once).
-- **Checks GitHub** for every addon Yungslaya publishes and shows *You have* vs *Newest*.
-- **Updates with one click.** Updates are ticked for you. Tick any addon you don't have yet to install it.
-- **Auto-update at login.** Tick one box and it checks a minute after you log in to Windows, then pops up a small note if anything changed.
-- **Safe by design.** It only touches the addon folders inside Yungslaya's releases, saves the old version first, and logs everything.
-
-## Use it
-
-1. **[Download the zip](https://github.com/Yungslaya/DragbagsAddonUpdater/releases/latest/download/DragbagsAddonUpdater.zip)** and unzip it anywhere.
-2. Double-click **`Dragbags Addon Updater.bat`**.
-   First time only: if Windows says *"Windows protected your PC"*, click **More info → Run anyway**.
-3. Click **Update / Install**. Tick **Update automatically when I log in to Windows** to never think about it again.
-
-If WoW is open during an update, type `/reload` in game.
+[Full change notes](https://github.com/Yungslaya/DragbagsAddonUpdater/releases/latest)
 
 ## The addons
 
-The updater installs and updates all of these. You can also grab any one on its own.
+| Addon | What it does | Download | Changes |
+| --- | --- | --- | --- |
+| [ProfessionPal](https://github.com/Yungslaya/ProfessionPal) | Guides all 12 professions from skill 1 to 300. Next steps, material counts, trainer pins, and gear shopping lists. Open with `/prof`. | [ZIP](https://github.com/Yungslaya/ProfessionPal/releases/latest/download/ProfessionPal.zip) | [Latest release](https://github.com/Yungslaya/ProfessionPal/releases/latest) |
+| [DBagsAlerts](https://github.com/Yungslaya/DBagsAlerts) | Class alerts, health and power bars, cooldowns, and reminders. Previously called **ProtAlerts**. Open settings with `/pa` or `/dba`. | [ZIP](https://github.com/Yungslaya/DBagsAlerts/releases/latest/download/DBagsAlerts.zip) | [Latest release](https://github.com/Yungslaya/DBagsAlerts/releases/latest) |
+| [DragsHedgeFund](https://github.com/Yungslaya/DragsHedgeFund) | Set gold goals, track your savings cuts, and see how much you can spend. Open with `/gg` or `/hedge`. | [ZIP](https://github.com/Yungslaya/DragsHedgeFund/releases/latest/download/DragsHedgeFund.zip) | [Latest release](https://github.com/Yungslaya/DragsHedgeFund/releases/latest) |
 
-### [ProfessionPal](https://github.com/Yungslaya/ProfessionPal) · beta
+The updater finds published release ZIPs on [Yungslaya's GitHub](https://github.com/Yungslaya). New addons appear when a release is published. It reads **published releases**, not unfinished changes on a repository's main page.
 
-**Every profession from 1 to 300, inside the game.** Type `/prof`.
+## Start here
 
-- Tells you the one thing to do next, like *"Make 25 × Bronze Warhammer"*.
-- Counts your bags and bank for every material you need.
-- Pins your next trainer on the map and keeps a shopping list.
-- Ranks the gear your profession can make for your class and role.
-- All 12 professions, gathering and crafting.
+1. **Download** the updater ZIP and **extract all**.
+2. Open the extracted folder and double-click **Dragbags Addon Updater.bat**.
+3. Check the AddOns folder at the top. Use **Change folder** if needed.
+4. Select an addon row to read **What changed**. Tick its box to install it, then click **Update / Install**.
 
-[Get it](https://github.com/Yungslaya/ProfessionPal) · [Download zip](https://github.com/Yungslaya/ProfessionPal/releases/latest/download/ProfessionPal.zip)
+Optional: tick **Update automatically when I log in to Windows**. It checks about a minute after login and only updates installed addons.
 
-### [ProtAlerts](https://github.com/Yungslaya/ProtAlerts) · work in progress
+For changed Lua files, type `/reload` in WoW. Installing a new addon or new files needs a full WoW restart.
 
-**Big, clear tank alerts for Protection Warrior and Paladin.** Type `/pa`.
+## Updating the updater itself
 
-- Big icons for danger: low health, loose mobs, taunt and kick.
-- Health, rage/mana, threat and swing timer bars.
-- Range dot on your target: green = in melee, red = too far.
-- Makes your tank macros for you.
-- Display only. It never presses buttons for you.
+Download and extract the new updater ZIP, close the old window, and open the new `.bat` file. The window title shows **1.0.1**. The old updater updates addons, not its own window.
 
-[Get it](https://github.com/Yungslaya/ProtAlerts) · [Download zip](https://github.com/Yungslaya/ProtAlerts/releases/latest/download/ProtAlerts.zip)
+If login updates are already enabled, untick and retick that option in the new copy to refresh the saved login script.
 
-New addons show up in the updater by themselves once they're on [github.com/Yungslaya](https://github.com/Yungslaya) with a release zip.
+## What the version labels mean
 
-## How it works
+- **Update ready:** GitHub has a newer release. Ticked for you.
+- **Up to date:** installed and published versions match.
+- **Local copy is newer:** this PC has a later version than GitHub. It is kept; the notes shown are for GitHub's release.
+- **Check version:** the versions could not be compared. No automatic replacement.
+- **Not installed:** tick it to install.
 
-A single PowerShell script (`updater.ps1`, readable in this repo) with a small Windows window. It reads the public GitHub API, downloads the latest release zip of each addon, and swaps the addon folder in place. Old versions go to `%LOCALAPPDATA%\DragbagsAddonUpdater\backup`. The login check is a normal Windows scheduled task named **Dragbags Addon Updater**, which you can switch off with the same checkbox.
+## Backups and settings
+
+Old addon folders are saved in `%LOCALAPPDATA%\DragbagsAddonUpdater\backup` (two per addon). Settings and `updater.log` are in `%LOCALAPPDATA%\DragbagsAddonUpdater`.
+
+Login updates use a Windows scheduled task named **Dragbags Addon Updater**. Untick the option to turn it off.
+
+The updater runs outside WoW. It downloads addon files; it does not play your character.

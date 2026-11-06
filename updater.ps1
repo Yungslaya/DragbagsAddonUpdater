@@ -1,4 +1,4 @@
-<#
+﻿<#
   Dragbags Addon Updater
   Keeps Yungslaya's WoW: Forever addons up to date from GitHub.
 
@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 $Owner    = 'Yungslaya'
 $AppName  = 'DragbagsAddonUpdater'
 $AppTitle = 'Dragbags Addon Updater'
-$AppVer   = '1.0.0'
+$AppVer   = '1.0.1'
 $Skip     = @('DragbagsAddonUpdater')          # repos that are not addons
 $DataDir  = Join-Path $env:LOCALAPPDATA $AppName
 $CfgFile  = Join-Path $DataDir 'config.json'
@@ -115,6 +115,8 @@ function Get-RemoteAddons {
             Latest      = ($rel.tag_name -replace '^[vV]', '')
             Url         = $zip.browser_download_url
             Description = $r.description
+            ReleaseUrl  = $rel.html_url
+            Notes       = $rel.body
         }
     }
     return $out
@@ -133,19 +135,43 @@ function Get-InstalledVersion([string]$addons, [string]$name) {
     return '?'
 }
 
-function Test-Newer([string]$latest, [string]$installed) {
-    if (-not $installed) { return $false }
+function Get-VersionState([string]$latest, [string]$installed) {
+    if (-not $installed) { return 'Not installed' }
     $a = $null; $b = $null
-    if ([version]::TryParse($latest, [ref]$a) -and [version]::TryParse($installed, [ref]$b)) { return ($a -gt $b) }
-    return ($latest -ne $installed)
+    if ([version]::TryParse($latest, [ref]$a) -and [version]::TryParse($installed, [ref]$b)) {
+        if ($a -gt $b) { return 'Update ready' }
+        if ($a -lt $b) { return 'Local copy is newer' }
+        return 'Up to date'
+    }
+    if ($latest -eq $installed -and $installed -ne '?') { return 'Up to date' }
+    return 'Check version'
+}
+
+function Test-Newer([string]$latest, [string]$installed) {
+    return ((Get-VersionState $latest $installed) -eq 'Update ready')
+}
+
+function Assert-InstallAllowed([string]$addons, $addon) {
+    $state = Get-VersionState $addon.Latest (Get-InstalledVersion $addons $addon.Name)
+    if ($state -eq 'Local copy is newer') { throw "$($addon.Name): your local copy is newer than GitHub. Kept your files." }
+    if ($state -eq 'Check version') { throw "$($addon.Name): cannot compare versions. Kept your files." }
+}
+
+function Get-NotesText($addon) {
+    $text = "$($addon.Name) $($addon.Latest)`r`n"
+    if ($addon.State -eq 'Local copy is newer') {
+        $text += "Your local version $($addon.Installed) is newer. These notes describe GitHub's release only.`r`n`r`n"
+    } else { $text += "`r`n" }
+    if ([string]::IsNullOrWhiteSpace($addon.Notes)) { return $text + 'No change notes were added to this release.' }
+    $body = $addon.Notes -replace '(?m)^#{1,6}\s*', '' -replace '\*\*', '' -replace '`', ''
+    return $text + $body
 }
 
 function Get-Status([string]$addons) {
     $remote = Get-RemoteAddons
     foreach ($r in $remote) {
         $inst = Get-InstalledVersion $addons $r.Name
-        $state = 'Not installed'
-        if ($inst) { if (Test-Newer $r.Latest $inst) { $state = 'Update ready' } else { $state = 'Up to date' } }
+        $state = Get-VersionState $r.Latest $inst
         $r | Add-Member -NotePropertyName Installed -NotePropertyValue $inst -Force
         $r | Add-Member -NotePropertyName State -NotePropertyValue $state -Force
     }
@@ -154,6 +180,7 @@ function Get-Status([string]$addons) {
 
 # ---------- install / update one addon ----------
 function Install-Addon([string]$addons, $addon) {
+    Assert-InstallAllowed $addons $addon
     $work = Join-Path $env:TEMP ("$AppName-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path $work | Out-Null
     try {
@@ -163,8 +190,11 @@ function Install-Addon([string]$addons, $addon) {
         Expand-Archive -Path $zip -DestinationPath $ex -Force
         # the addon folders are the top-level folders that hold a .toc
         $folders = @(Get-ChildItem -Path $ex -Directory | Where-Object { Get-ChildItem -Path $_.FullName -Filter '*.toc' -File })
-        if ($folders.Count -eq 0) { throw "The download for $($addon.Name) has no addon folder inside." }
-        $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        if ($folders.Count -ne 1 -or $folders[0].Name -ne $addon.Name) { throw "The download for $($addon.Name) has no addon folder inside." }
+        $packageVersion = Get-InstalledVersion $ex $addon.Name
+        if ($packageVersion -ne $addon.Latest) { throw 'Downloaded addon version does not match its release. Kept your files.' }
+        Assert-InstallAllowed $addons $addon
+        $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
         foreach ($f in $folders) {
             $dest = Join-Path $addons $f.Name
             if (Test-Path $dest) {
@@ -265,16 +295,16 @@ $muted    = [System.Drawing.Color]::FromArgb(164, 158, 145)
 $green    = [System.Drawing.Color]::FromArgb(70, 200, 105)
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = $AppTitle
-$form.Size = New-Object System.Drawing.Size(760, 560)
-$form.MinimumSize = New-Object System.Drawing.Size(640, 480)
+$form.Text = "$AppTitle $AppVer"
+$form.Size = New-Object System.Drawing.Size(840, 720)
+$form.MinimumSize = New-Object System.Drawing.Size(800, 690)
 $form.StartPosition = 'CenterScreen'
 $form.BackColor = $bg
 $form.ForeColor = $fg
 $form.Font = $font
 
 $title = New-Object System.Windows.Forms.Label
-$title.Text = $AppTitle
+$title.Text = "$AppTitle $AppVer"
 $title.Font = $fontBig
 $title.ForeColor = $gold
 $title.AutoSize = $true
@@ -283,7 +313,7 @@ $form.Controls.Add($title)
 
 $pathLabel = New-Object System.Windows.Forms.Label
 $pathLabel.AutoSize = $false
-$pathLabel.Size = New-Object System.Drawing.Size(560, 48)
+$pathLabel.Size = New-Object System.Drawing.Size(600, 48)
 $pathLabel.Location = New-Object System.Drawing.Point(22, 60)
 $pathLabel.ForeColor = $muted
 $form.Controls.Add($pathLabel)
@@ -291,7 +321,7 @@ $form.Controls.Add($pathLabel)
 $changeBtn = New-Object System.Windows.Forms.Button
 $changeBtn.Text = 'Change folder'
 $changeBtn.Size = New-Object System.Drawing.Size(140, 36)
-$changeBtn.Location = New-Object System.Drawing.Point(590, 62)
+$changeBtn.Location = New-Object System.Drawing.Point(670, 62)
 $changeBtn.Anchor = 'Top, Right'
 $changeBtn.FlatStyle = 'Flat'
 $changeBtn.ForeColor = $fg
@@ -302,22 +332,24 @@ $grid.View = 'Details'
 $grid.FullRowSelect = $true
 $grid.CheckBoxes = $true
 $grid.Location = New-Object System.Drawing.Point(22, 116)
-$grid.Size = New-Object System.Drawing.Size(708, 250)
-$grid.Anchor = 'Top, Bottom, Left, Right'
+$grid.Size = New-Object System.Drawing.Size(788, 180)
+$grid.Anchor = 'Top, Left, Right'
+$grid.MultiSelect = $false
+$grid.HideSelection = $false
 $grid.BackColor = $panel
 $grid.ForeColor = $fg
 $grid.BorderStyle = 'FixedSingle'
 [void]$grid.Columns.Add('Addon', 220)
 [void]$grid.Columns.Add('You have', 120)
-[void]$grid.Columns.Add('Newest', 120)
-[void]$grid.Columns.Add('Status', 220)
+[void]$grid.Columns.Add('On GitHub', 120)
+[void]$grid.Columns.Add('Status', 290)
 $form.Controls.Add($grid)
 
 $updateBtn = New-Object System.Windows.Forms.Button
 $updateBtn.Text = 'Update / Install'
 $updateBtn.Font = $fontBold
 $updateBtn.Size = New-Object System.Drawing.Size(220, 48)
-$updateBtn.Location = New-Object System.Drawing.Point(22, 380)
+$updateBtn.Location = New-Object System.Drawing.Point(22, 540)
 $updateBtn.Anchor = 'Bottom, Left'
 $updateBtn.BackColor = $gold
 $updateBtn.ForeColor = $ink
@@ -327,7 +359,7 @@ $form.Controls.Add($updateBtn)
 $refreshBtn = New-Object System.Windows.Forms.Button
 $refreshBtn.Text = 'Check again'
 $refreshBtn.Size = New-Object System.Drawing.Size(150, 48)
-$refreshBtn.Location = New-Object System.Drawing.Point(254, 380)
+$refreshBtn.Location = New-Object System.Drawing.Point(254, 540)
 $refreshBtn.Anchor = 'Bottom, Left'
 $refreshBtn.FlatStyle = 'Flat'
 $refreshBtn.ForeColor = $fg
@@ -336,18 +368,63 @@ $form.Controls.Add($refreshBtn)
 $autoBox = New-Object System.Windows.Forms.CheckBox
 $autoBox.Text = 'Update automatically when I log in to Windows'
 $autoBox.AutoSize = $true
-$autoBox.Location = New-Object System.Drawing.Point(24, 440)
+$autoBox.Location = New-Object System.Drawing.Point(24, 600)
 $autoBox.Anchor = 'Bottom, Left'
 $autoBox.ForeColor = $fg
 $form.Controls.Add($autoBox)
 
 $status = New-Object System.Windows.Forms.Label
 $status.AutoSize = $false
-$status.Size = New-Object System.Drawing.Size(708, 30)
-$status.Location = New-Object System.Drawing.Point(22, 474)
+$status.Size = New-Object System.Drawing.Size(788, 40)
+$status.Location = New-Object System.Drawing.Point(22, 634)
 $status.Anchor = 'Bottom, Left, Right'
 $status.ForeColor = $muted
 $form.Controls.Add($status)
+
+
+$notesLabel = New-Object System.Windows.Forms.Label
+$notesLabel.Text = 'What changed - select an addon above'
+$notesLabel.Font = $fontBold
+$notesLabel.AutoSize = $true
+$notesLabel.Location = New-Object System.Drawing.Point(22, 310)
+$form.Controls.Add($notesLabel)
+
+$notes = New-Object System.Windows.Forms.RichTextBox
+$notes.Location = New-Object System.Drawing.Point(22, 342)
+$notes.Size = New-Object System.Drawing.Size(788, 180)
+$notes.Anchor = 'Top, Bottom, Left, Right'
+$notes.ReadOnly = $true
+$notes.BackColor = $panel
+$notes.ForeColor = $fg
+$notes.Font = $font
+$notes.BorderStyle = 'FixedSingle'
+$notes.DetectUrls = $false
+$notes.Text = 'Select an addon to read its latest release notes.'
+$form.Controls.Add($notes)
+
+$releaseBtn = New-Object System.Windows.Forms.Button
+$releaseBtn.Text = 'Release page'
+$releaseBtn.Size = New-Object System.Drawing.Size(160, 48)
+$releaseBtn.Location = New-Object System.Drawing.Point(650, 540)
+$releaseBtn.Anchor = 'Bottom, Right'
+$releaseBtn.FlatStyle = 'Flat'
+$releaseBtn.Enabled = $false
+$form.Controls.Add($releaseBtn)
+
+$grid.Add_SelectedIndexChanged({
+    $releaseBtn.Enabled = $false
+    if ($grid.SelectedItems.Count -gt 0) {
+        $a = $grid.SelectedItems[0].Tag
+        $notes.Text = Get-NotesText $a
+        $releaseBtn.Enabled = [bool]($a.ReleaseUrl -like "https://github.com/$Owner/*/releases/*")
+    }
+})
+$releaseBtn.Add_Click({
+    if ($grid.SelectedItems.Count -gt 0) {
+        $url = $grid.SelectedItems[0].Tag.ReleaseUrl
+        if ($url -like "https://github.com/$Owner/*/releases/*") { Start-Process $url }
+    }
+})
 
 $script:addons = $AddonsPath
 $script:items = @()
@@ -365,12 +442,14 @@ function Show-Path {
 
 function Load-List {
     $grid.Items.Clear()
+    $notes.Text = 'Select an addon to read its latest release notes.'
+    $releaseBtn.Enabled = $false
     Show-Path
     if (-not $script:addons) { Set-Status 'Pick your WoW folder first.'; return }
     Set-Status 'Checking GitHub...'
     try { $script:items = @(Get-Status $script:addons) }
     catch { Set-Status ("Couldn't reach GitHub. Check your internet and click 'Check again'.") $gold; return }
-    $ready = 0
+    $ready = 0; $ahead = 0; $unknown = 0
     foreach ($a in $script:items) {
         $row = New-Object System.Windows.Forms.ListViewItem($a.Name)
         $have = '-'
@@ -382,11 +461,18 @@ function Load-List {
         $row.ToolTipText = $a.Description
         if ($a.State -eq 'Update ready') { $row.Checked = $true; $row.ForeColor = $gold; $ready++ }
         elseif ($a.State -eq 'Up to date') { $row.ForeColor = $green }
+        elseif ($a.State -eq 'Local copy is newer') { $row.ForeColor = $gold; $ahead++ }
+        elseif ($a.State -eq 'Check version') { $row.ForeColor = $gold; $unknown++ }
         [void]$grid.Items.Add($row)
     }
     if ($script:items.Count -eq 0) { Set-Status 'No addons published yet.' }
     elseif ($ready -gt 0) { Set-Status ("$ready update(s) ready. Click 'Update / Install'.") $gold }
-    else { Set-Status 'Everything you have is up to date. Tick an addon to install it.' $green }
+    elseif ($ahead -gt 0 -or $unknown -gt 0) { Set-Status "$ahead local addon(s) newer than GitHub; $unknown version(s) need checking. Your files are kept." $gold }
+    else { Set-Status 'Installed addons match GitHub. Select an addon to see what changed.' $green }
+    $selected = @($grid.Items | Where-Object { $_.Tag.State -eq 'Update ready' } | Select-Object -First 1)
+    if (-not $selected) { $selected = @($grid.Items | Where-Object { $_.Tag.Name -eq 'ProfessionPal' } | Select-Object -First 1) }
+    if (-not $selected -and $grid.Items.Count -gt 0) { $selected = @($grid.Items[0]) }
+    if ($selected) { $selected[0].Selected = $true }
 }
 
 $changeBtn.Add_Click({
@@ -420,7 +506,7 @@ $updateBtn.Add_Click({
     if ($ok.Count -gt 0) { $msg = 'Done: ' + ($ok -join ', ') + '.' }
     if ($bad.Count -gt 0) { $msg += ' Failed: ' + ($bad -join ', ') + ' (see log).' }
     if ((Test-WowRunning) -and $ok.Count -gt 0) { $msg += ' Type /reload in game.' }
-    Set-Status $msg $green
+    if ($bad.Count -gt 0) { Set-Status $msg $gold } else { Set-Status $msg $green }
 })
 
 $autoBox.Add_Click({

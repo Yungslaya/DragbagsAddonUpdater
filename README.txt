@@ -1,7 +1,16 @@
-Dragbags Addon Updater 1.0.0
+﻿Dragbags Addon Updater 1.0.1
 ============================
 
 One click keeps every Yungslaya WoW: Forever addon up to date.
+
+NEW IN 1.0.1
+------------
+Select an addon to read its change notes. "Release page" opens GitHub.
+Newer local copies are clearly marked and cannot be downgraded.
+
+To update the updater itself, download and unzip this new copy and open
+its .bat file. If login updates are enabled, untick then retick the box
+in this new copy to refresh the login task.
 
 HOW TO USE
 ----------
@@ -33,3 +42,12 @@ Untick the auto-update box, or delete the task "Dragbags Addon Updater"
 in Windows Task Scheduler.
 
 Source: https://github.com/Yungslaya/DragbagsAddonUpdater
+
+THE ADDONS
+----------
+ProfessionPal - profession guides, materials and gear lists. /prof
+DBagsAlerts - class alerts and bars. Formerly ProtAlerts. /pa
+DragsHedgeFund - gold goals and savings. /gg
+
+See each addon's download and change notes:
+https://github.com/Yungslaya/DragbagsAddonUpdater#the-addons
