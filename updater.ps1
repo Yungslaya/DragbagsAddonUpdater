@@ -39,7 +39,9 @@ $Apps     = @(
 )
 # Files inside an addon folder that belong to the player and survive an update.
 $Keep     = @{ ProfessionPal = @('LedgerPlan.lua') }
-$AppsRoot   = [Environment]::GetFolderPath('MyDocuments')
+# Where helper apps live. New installs go in the first one; an existing copy in any of them is updated in place
+# (Documents can be the OneDrive folder or the plain one in the user profile).
+$AppsRoots  = @([Environment]::GetFolderPath('MyDocuments'), (Join-Path $env:USERPROFILE 'Documents')) | Select-Object -Unique
 $DesktopDir = [Environment]::GetFolderPath('Desktop')
 $DataDir  = Join-Path $env:LOCALAPPDATA $AppName
 $CfgFile  = Join-Path $DataDir 'config.json'
@@ -152,7 +154,11 @@ function Get-RemoteAddons {
 }
 
 # ---------- helper apps ----------
-function Get-AppPath($app) { return (Join-Path (Join-Path $AppsRoot $app.Folder) $app.File) }
+function Get-AppPath($app) {
+    $paths = @($AppsRoots | ForEach-Object { Join-Path (Join-Path $_ $app.Folder) $app.File })
+    foreach ($p in $paths) { if (Test-Path $p) { return $p } }
+    return $paths[0]
+}
 
 # The app file carries its version as a line like: VERSION = "1.2.16"
 function Get-FileVersion([string]$path) {

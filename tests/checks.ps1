@@ -34,7 +34,7 @@ if($r.Count -ne 1 -or $r[0].Notes -ne 'Release details' -or $r[0].State -ne 'Loc
 'PASS: syntax, six version cases, downgrade blocked before download, files unchanged, release notes, remote metadata'
 # --- 1.1.0: player files survive an update, and helper apps install and update ---
 $AppName='DragbagsTest';$DataDir="$root\data";$LogFile="$root\data\log.txt";New-Item -ItemType Directory $DataDir -Force|Out-Null
-$AppsRoot="$root\docs";$DesktopDir="$root\desktop";New-Item -ItemType Directory $AppsRoot,$DesktopDir -Force|Out-Null
+$AppsRoots=@("$root\docs","$root\docs2");$DesktopDir="$root\desktop";New-Item -ItemType Directory "$root\docs","$root\docs2\TestApp",$DesktopDir -Force|Out-Null
 $Keep=@{TestAddon=@('LedgerPlan.lua')}
 $Apps=@(@{Repo='TestAddon';Asset='TestApp.pyw';Title='Test App';Folder='TestApp';File='Test App.pyw';Description='app'})
 'mine'|Set-Content "$root\AddOns\TestAddon\LedgerPlan.lua"
@@ -75,7 +75,13 @@ $script:appBody='VERSION = "3.0.0"';Install-Addon "$root\AddOns" $r[1]
 if(@(Get-ChildItem "$root\data\backup" -Filter 'TestApp-*.pyw').Count -ne 1){throw 'App backup missing'}
 'VERSION = "4.0.0"'|Set-Content "$root\docs\TestApp\Test App.pyw"
 $r=@(Get-Status "$root\AddOns");if($r[1].State -ne 'Local copy is newer'){throw 'Newer app copy not kept'}
-'PASS: named zip picked, player plan kept, app installed with shortcut, old/wrong/newer app copies handled'
+# a copy that already lives in the second Documents folder is the one that gets updated
+Remove-Item "$root\docs\TestApp" -Recurse -Force
+'VERSION = "1.0.0"'|Set-Content "$root\docs2\TestApp\Test App.pyw"
+$r=@(Get-Status "$root\AddOns");if($r[1].Installed -ne '1.0.0' -or $r[1].State -ne 'Update ready'){throw 'Second Documents folder not found'}
+Install-Addon "$root\AddOns" $r[1]
+if((Get-FileVersion "$root\docs2\TestApp\Test App.pyw") -ne '3.0.0' -or (Test-Path "$root\docs\TestApp")){throw 'App not updated in place'}
+'PASS: named zip picked, player plan kept, app installed with shortcut, old/wrong/newer app copies handled, second Documents folder'
 $env:LOCALAPPDATA=Join-Path $root 'profile'
 & $path -SelfTest -AddonsPath "$root\AddOns"
 
