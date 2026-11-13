@@ -5,6 +5,8 @@
   - Finds your WoW: Forever AddOns folder by itself (or lets you pick it).
   - Lists every addon Yungslaya publishes on GitHub (each repo's latest release .zip).
   - Updates the ones you have, installs the ones you pick.
+  - Also installs and updates helper apps that ship with an addon release
+    (the Market Ledger Companion for ProfessionPal).
   - Optional: checks and updates by itself every time you log in to Windows.
 
   It only touches addon folders that come from Yungslaya's GitHub releases.
@@ -27,8 +29,18 @@ $ErrorActionPreference = 'Stop'
 $Owner    = 'Yungslaya'
 $AppName  = 'DragbagsAddonUpdater'
 $AppTitle = 'Dragbags Addon Updater'
-$AppVer   = '1.0.1'
+$AppVer   = '1.1.0'
 $Skip     = @('DragbagsAddonUpdater')          # repos that are not addons
+# Helper apps: one file attached to an addon's release. Its version is the release version.
+$Apps     = @(
+    @{ Repo = 'ProfessionPal'; Asset = 'MarketLedgerCompanion.pyw'; Title = 'Market Ledger Companion'
+       Folder = 'MarketLedgerCompanion'; File = 'Market Ledger Companion.pyw'
+       Description = 'Desktop app for the ProfessionPal Market Ledger: asks an AI what to sell and writes the plan into the addon. Needs Python 3.' }
+)
+# Files inside an addon folder that belong to the player and survive an update.
+$Keep     = @{ ProfessionPal = @('LedgerPlan.lua') }
+$AppsRoot   = [Environment]::GetFolderPath('MyDocuments')
+$DesktopDir = [Environment]::GetFolderPath('Desktop')
 $DataDir  = Join-Path $env:LOCALAPPDATA $AppName
 $CfgFile  = Join-Path $DataDir 'config.json'
 $LogFile  = Join-Path $DataDir 'updater.log'
@@ -108,18 +120,106 @@ function Get-RemoteAddons {
         try {
             $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/$Owner/$($r.name)/releases/latest" -Headers $Headers
         } catch { continue }   # no release yet
-        $zip = $rel.assets | Where-Object { $_.name -like '*.zip' } | Select-Object -First 1
+        $zip = $rel.assets | Where-Object { $_.name -eq "$($r.name).zip" } | Select-Object -First 1
+        if (-not $zip) { $zip = $rel.assets | Where-Object { $_.name -like '*.zip' } | Select-Object -First 1 }
         if (-not $zip) { continue }
+        $latest = ($rel.tag_name -replace '^[vV]', '')
         $out += [pscustomobject]@{
             Name        = $r.name
-            Latest      = ($rel.tag_name -replace '^[vV]', '')
+            Kind        = 'addon'
+            Latest      = $latest
             Url         = $zip.browser_download_url
             Description = $r.description
             ReleaseUrl  = $rel.html_url
             Notes       = $rel.body
         }
+        foreach ($app in ($Apps | Where-Object { $_.Repo -eq $r.name })) {
+            $file = $rel.assets | Where-Object { $_.name -eq $app.Asset } | Select-Object -First 1
+            if (-not $file) { continue }
+            $out += [pscustomobject]@{
+                Name        = $app.Title
+                Kind        = 'app'
+                App         = $app
+                Latest      = $latest
+                Url         = $file.browser_download_url
+                Description = $app.Description
+                ReleaseUrl  = $rel.html_url
+                Notes       = $rel.body
+            }
+        }
     }
     return $out
+}
+
+# ---------- helper apps ----------
+function Get-AppPath($app) { return (Join-Path (Join-Path $AppsRoot $app.Folder) $app.File) }
+
+# The app file carries its version as a line like: VERSION = "1.2.16"
+function Get-FileVersion([string]$path) {
+    if (-not (Test-Path $path)) { return $null }
+    $line = Select-String -Path $path -Pattern '^VERSION\s*=\s*"([^"]+)"' | Select-Object -First 1
+    if ($line) { return $line.Matches[0].Groups[1].Value.Trim() }
+    return '0.0.0'      # a copy from before versions were added
+}
+
+function Find-Pythonw {
+    foreach ($hive in @('HKCU:', 'HKLM:')) {
+        $keys = Get-ChildItem "$hive\Software\Python\PythonCore" -ErrorAction SilentlyContinue | Sort-Object PSChildName -Descending
+        foreach ($k in $keys) {
+            try {
+                $dir = (Get-ItemProperty -Path (Join-Path $k.PSPath 'InstallPath') -ErrorAction Stop).'(default)'
+                $exe = Join-Path $dir 'pythonw.exe'
+                if (Test-Path $exe) { return $exe }
+            } catch { }
+        }
+    }
+    $cmd = Get-Command pythonw.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd -and $cmd.Source -notlike '*WindowsApps*') { return $cmd.Source }
+    $found = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'Programs\Python') -Filter pythonw.exe -Recurse -Depth 1 -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+    if ($found) { return $found.FullName }
+    return $null
+}
+
+function Get-LocalVersion([string]$addons, $item) {
+    if ($item.Kind -eq 'app') { return (Get-FileVersion (Get-AppPath $item.App)) }
+    return (Get-InstalledVersion $addons $item.Name)
+}
+
+function Install-App([string]$addons, $item) {
+    Assert-InstallAllowed $addons $item
+    $work = Join-Path $env:TEMP ("$AppName-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $work | Out-Null
+    try {
+        $new = Join-Path $work $item.App.Asset
+        Invoke-WebRequest -Uri $item.Url -OutFile $new -Headers $Headers -UseBasicParsing
+        if ((Get-FileVersion $new) -ne $item.Latest) { throw 'Downloaded app version does not match its release. Kept your files.' }
+        $dest = Get-AppPath $item.App
+        New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+        if (Test-Path $dest) {
+            $bakDir = Join-Path $DataDir 'backup'
+            New-Item -ItemType Directory -Force -Path $bakDir | Out-Null
+            $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
+            Copy-Item -Path $dest -Destination (Join-Path $bakDir ($item.App.Folder + '-' + $stamp + '.pyw')) -Force
+            Get-ChildItem $bakDir -File | Where-Object { $_.Name -like ($item.App.Folder + '-*.pyw') } |
+                Sort-Object Name -Descending | Select-Object -Skip 2 | Remove-Item -Force
+        }
+        Copy-Item -Path $new -Destination $dest -Force
+        # a Desktop shortcut, made once; an existing one is left alone
+        $python = Find-Pythonw
+        $lnk = Join-Path $DesktopDir ($item.App.Title + '.lnk')
+        if (-not (Test-Path $lnk)) {
+            $s = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk)
+            if ($python) { $s.TargetPath = $python; $s.Arguments = '"' + $dest + '"' } else { $s.TargetPath = $dest }
+            $s.WorkingDirectory = (Split-Path $dest -Parent)
+            $s.Description = $item.App.Title
+            $s.Save()
+        }
+        if (-not $python) { $script:AppNote = "$($item.App.Title) needs Python 3. Get it from python.org, then open the Desktop shortcut." }
+        Write-Log ("Installed {0} {1} -> {2}" -f $item.Name, $item.Latest, $dest)
+    } finally {
+        Remove-Item -Path $work -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 # ---------- local versions ----------
@@ -152,7 +252,7 @@ function Test-Newer([string]$latest, [string]$installed) {
 }
 
 function Assert-InstallAllowed([string]$addons, $addon) {
-    $state = Get-VersionState $addon.Latest (Get-InstalledVersion $addons $addon.Name)
+    $state = Get-VersionState $addon.Latest (Get-LocalVersion $addons $addon)
     if ($state -eq 'Local copy is newer') { throw "$($addon.Name): your local copy is newer than GitHub. Kept your files." }
     if ($state -eq 'Check version') { throw "$($addon.Name): cannot compare versions. Kept your files." }
 }
@@ -170,7 +270,7 @@ function Get-NotesText($addon) {
 function Get-Status([string]$addons) {
     $remote = Get-RemoteAddons
     foreach ($r in $remote) {
-        $inst = Get-InstalledVersion $addons $r.Name
+        $inst = Get-LocalVersion $addons $r
         $state = Get-VersionState $r.Latest $inst
         $r | Add-Member -NotePropertyName Installed -NotePropertyValue $inst -Force
         $r | Add-Member -NotePropertyName State -NotePropertyValue $state -Force
@@ -180,6 +280,7 @@ function Get-Status([string]$addons) {
 
 # ---------- install / update one addon ----------
 function Install-Addon([string]$addons, $addon) {
+    if ($addon.Kind -eq 'app') { Install-App $addons $addon; return }
     Assert-InstallAllowed $addons $addon
     $work = Join-Path $env:TEMP ("$AppName-" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path $work | Out-Null
@@ -197,6 +298,7 @@ function Install-Addon([string]$addons, $addon) {
         $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
         foreach ($f in $folders) {
             $dest = Join-Path $addons $f.Name
+            $bak = $null
             if (Test-Path $dest) {
                 $bak = Join-Path $DataDir ("backup\" + $f.Name + "-" + $stamp)
                 New-Item -ItemType Directory -Force -Path (Split-Path $bak -Parent) | Out-Null
@@ -206,6 +308,13 @@ function Install-Addon([string]$addons, $addon) {
                     Sort-Object Name -Descending | Select-Object -Skip 2 | Remove-Item -Recurse -Force
             }
             Copy-Item -Path $f.FullName -Destination $dest -Recurse -Force
+            # put the player's own files back (their Market Ledger plan)
+            if ($bak -and $Keep[$f.Name]) {
+                foreach ($k in $Keep[$f.Name]) {
+                    $old = Join-Path $bak $k
+                    if (Test-Path $old) { Copy-Item -Path $old -Destination (Join-Path $dest $k) -Force }
+                }
+            }
         }
         Write-Log ("Installed {0} {1} -> {2}" -f $addon.Name, $addon.Latest, $addons)
     } finally {
@@ -271,7 +380,7 @@ if (-not $AddonsPath) { $AddonsPath = Find-AddonsDir } else { $AddonsPath = Reso
 
 if ($List) {
     "AddOns folder: $AddonsPath"
-    if ($AddonsPath) { Get-Status $AddonsPath | Format-Table Name, Installed, Latest, State -AutoSize | Out-String -Width 200 }
+    if ($AddonsPath) { Get-Status $AddonsPath | Format-Table Name, Kind, Installed, Latest, State -AutoSize | Out-String -Width 200 }
     return
 }
 if ($Auto) {
@@ -339,10 +448,10 @@ $grid.HideSelection = $false
 $grid.BackColor = $panel
 $grid.ForeColor = $fg
 $grid.BorderStyle = 'FixedSingle'
-[void]$grid.Columns.Add('Addon', 220)
-[void]$grid.Columns.Add('You have', 120)
-[void]$grid.Columns.Add('On GitHub', 120)
-[void]$grid.Columns.Add('Status', 290)
+[void]$grid.Columns.Add('Addon', 300)
+[void]$grid.Columns.Add('You have', 110)
+[void]$grid.Columns.Add('On GitHub', 110)
+[void]$grid.Columns.Add('Status', 240)
 $form.Controls.Add($grid)
 
 $updateBtn = New-Object System.Windows.Forms.Button
@@ -451,7 +560,9 @@ function Load-List {
     catch { Set-Status ("Couldn't reach GitHub. Check your internet and click 'Check again'.") $gold; return }
     $ready = 0; $ahead = 0; $unknown = 0
     foreach ($a in $script:items) {
-        $row = New-Object System.Windows.Forms.ListViewItem($a.Name)
+        $label = $a.Name
+        if ($a.Kind -eq 'app') { $label += ' (app)' }
+        $row = New-Object System.Windows.Forms.ListViewItem($label)
         $have = '-'
         if ($a.Installed) { $have = $a.Installed }
         [void]$row.SubItems.Add($have)
@@ -494,7 +605,7 @@ $updateBtn.Add_Click({
     $picked = @($grid.Items | Where-Object { $_.Checked } | ForEach-Object { $_.Tag })
     if ($picked.Count -eq 0) { Set-Status 'Tick the addons you want first.'; return }
     $updateBtn.Enabled = $false
-    $ok = @(); $bad = @()
+    $ok = @(); $bad = @(); $script:AppNote = $null
     foreach ($a in $picked) {
         Set-Status ("Getting {0} {1}..." -f $a.Name, $a.Latest)
         try { Install-Addon $script:addons $a; $ok += $a.Name }
@@ -506,7 +617,8 @@ $updateBtn.Add_Click({
     if ($ok.Count -gt 0) { $msg = 'Done: ' + ($ok -join ', ') + '.' }
     if ($bad.Count -gt 0) { $msg += ' Failed: ' + ($bad -join ', ') + ' (see log).' }
     if ((Test-WowRunning) -and $ok.Count -gt 0) { $msg += ' Type /reload in game.' }
-    if ($bad.Count -gt 0) { Set-Status $msg $gold } else { Set-Status $msg $green }
+    if ($script:AppNote) { $msg += ' ' + $script:AppNote }
+    if ($bad.Count -gt 0 -or $script:AppNote) { Set-Status $msg $gold } else { Set-Status $msg $green }
 })
 
 $autoBox.Add_Click({

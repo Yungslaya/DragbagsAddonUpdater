@@ -32,6 +32,50 @@ function Invoke-RestMethod {param($Uri,$Headers)
 $r=@(Get-Status "$root\AddOns")
 if($r.Count -ne 1 -or $r[0].Notes -ne 'Release details' -or $r[0].State -ne 'Local copy is newer'){throw 'Remote notes/status failed'}
 'PASS: syntax, six version cases, downgrade blocked before download, files unchanged, release notes, remote metadata'
+# --- 1.1.0: player files survive an update, and helper apps install and update ---
+$AppName='DragbagsTest';$DataDir="$root\data";$LogFile="$root\data\log.txt";New-Item -ItemType Directory $DataDir -Force|Out-Null
+$AppsRoot="$root\docs";$DesktopDir="$root\desktop";New-Item -ItemType Directory $AppsRoot,$DesktopDir -Force|Out-Null
+$Keep=@{TestAddon=@('LedgerPlan.lua')}
+$Apps=@(@{Repo='TestAddon';Asset='TestApp.pyw';Title='Test App';Folder='TestApp';File='Test App.pyw';Description='app'})
+'mine'|Set-Content "$root\AddOns\TestAddon\LedgerPlan.lua"
+New-Item -ItemType Directory "$root\pkg\TestAddon" -Force|Out-Null
+'## Version: 3.0.0'|Set-Content "$root\pkg\TestAddon\TestAddon.toc"
+'stub'|Set-Content "$root\pkg\TestAddon\LedgerPlan.lua"
+Compress-Archive -Path "$root\pkg\TestAddon" -DestinationPath "$root\TestAddon.zip"
+$script:appBody='VERSION = "3.0.0"'
+function Invoke-WebRequest {param($Uri,$OutFile,$Headers,[switch]$UseBasicParsing)
+ if($Uri -like '*.zip'){Copy-Item "$root\TestAddon.zip" $OutFile}else{$script:appBody|Set-Content $OutFile}
+}
+function Invoke-RestMethod {param($Uri,$Headers)
+ if($Uri -like '*/users/*'){return [pscustomobject]@{name='TestAddon';fork=$false;archived=$false;description='test'}}
+ return [pscustomobject]@{tag_name='v3.0.0';html_url='https://github.com/test/TestAddon/releases/tag/v3.0.0';body='Notes';assets=@(
+  [pscustomobject]@{name='Other.zip';browser_download_url='https://example.invalid/other.zip'},
+  [pscustomobject]@{name='TestApp.pyw';browser_download_url='https://example.invalid/TestApp.pyw'},
+  [pscustomobject]@{name='TestAddon.zip';browser_download_url='https://example.invalid/TestAddon.zip'})}
+}
+$r=@(Get-Status "$root\AddOns")
+if($r.Count -ne 2){throw "Expected addon + app rows, got $($r.Count)"}
+if($r[0].Url -notlike '*TestAddon.zip' -or $r[0].State -ne 'Update ready'){throw 'Addon zip pick/state failed'}
+if($r[1].Kind -ne 'app' -or $r[1].Name -ne 'Test App' -or $r[1].State -ne 'Not installed'){throw 'App row failed'}
+Install-Addon "$root\AddOns" $r[0]
+if((Get-InstalledVersion "$root\AddOns" 'TestAddon') -ne '3.0.0'){throw 'Addon not updated'}
+if((Get-Content "$root\AddOns\TestAddon\LedgerPlan.lua") -ne 'mine'){throw 'Player plan was replaced'}
+Install-Addon "$root\AddOns" $r[1]
+if((Get-FileVersion "$root\docs\TestApp\Test App.pyw") -ne '3.0.0'){throw 'App not installed'}
+if(-not (Test-Path "$root\desktop\Test App.lnk")){throw 'Shortcut missing'}
+$r=@(Get-Status "$root\AddOns")
+if($r[0].State -ne 'Up to date' -or $r[1].State -ne 'Up to date'){throw 'States after install failed'}
+# an old copy with no version line counts as out of date; a wrong download is refused
+'print(1)'|Set-Content "$root\docs\TestApp\Test App.pyw"
+$r=@(Get-Status "$root\AddOns");if($r[1].State -ne 'Update ready'){throw 'Old app copy not flagged'}
+$script:appBody='VERSION = "9.9.9"';$refused=$false
+try{Install-Addon "$root\AddOns" $r[1]}catch{$refused=$true}
+if(-not $refused -or (Get-Content "$root\docs\TestApp\Test App.pyw") -ne 'print(1)'){throw 'Wrong app download was installed'}
+$script:appBody='VERSION = "3.0.0"';Install-Addon "$root\AddOns" $r[1]
+if(@(Get-ChildItem "$root\data\backup" -Filter 'TestApp-*.pyw').Count -ne 1){throw 'App backup missing'}
+'VERSION = "4.0.0"'|Set-Content "$root\docs\TestApp\Test App.pyw"
+$r=@(Get-Status "$root\AddOns");if($r[1].State -ne 'Local copy is newer'){throw 'Newer app copy not kept'}
+'PASS: named zip picked, player plan kept, app installed with shortcut, old/wrong/newer app copies handled'
 $env:LOCALAPPDATA=Join-Path $root 'profile'
 & $path -SelfTest -AddonsPath "$root\AddOns"
 

@@ -1,12 +1,26 @@
-﻿Dragbags Addon Updater 1.0.1
+﻿Dragbags Addon Updater 1.1.0
 ============================
 
 One click keeps every Yungslaya WoW: Forever addon up to date.
 
-NEW IN 1.0.1
+NEW IN 1.1.0
 ------------
-Select an addon to read its change notes. "Release page" opens GitHub.
-Newer local copies are clearly marked and cannot be downgraded.
+Installs and updates the Market Ledger Companion, the desktop app for
+ProfessionPal's AI Help. Tick "Market Ledger Companion (app)".
+Your Market Ledger plan is now kept when ProfessionPal updates.
+
+MARKET LEDGER COMPANION (AI HELP)
+---------------------------------
+Market Ledger can ask an AI what to sell. Addons cannot reach the
+internet, so this small app carries your scan to the AI and back.
+1. Tick "Market Ledger Companion (app)", click "Update / Install".
+   It goes in Documents\MarketLedgerCompanion with a Desktop shortcut.
+2. Install Python 3 (free) from https://www.python.org/downloads/
+3. In WoW at the Auction House: /ppauction, "Scan Bags", "AI Help",
+   then "Save and reload".
+4. Open the Companion. "Copy for AI chat", paste into ChatGPT, Claude
+   or any AI chat, copy the whole reply, then "Paste AI reply".
+5. Type /reload in WoW and open the Plan tab.
 
 To update the updater itself, download and unzip this new copy and open
 its .bat file. If login updates are enabled, untick then retick the box
