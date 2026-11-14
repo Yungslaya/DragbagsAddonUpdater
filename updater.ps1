@@ -1,4 +1,4 @@
-﻿<#
+<#
   Dragbags Addon Updater
   Keeps Yungslaya's WoW: Forever addons up to date from GitHub.
 
@@ -6,7 +6,7 @@
   - Lists every addon Yungslaya publishes on GitHub (each repo's latest release .zip).
   - Updates the ones you have, installs the ones you pick.
   - Also installs and updates helper apps that ship with an addon release
-    (the Market Ledger Companion for ProfessionPal).
+    (the Market Ledger Companion).
   - Optional: checks and updates by itself every time you log in to Windows.
 
   It only touches addon folders that come from Yungslaya's GitHub releases.
@@ -29,16 +29,16 @@ $ErrorActionPreference = 'Stop'
 $Owner    = 'Yungslaya'
 $AppName  = 'DragbagsAddonUpdater'
 $AppTitle = 'Dragbags Addon Updater'
-$AppVer   = '1.1.0'
+$AppVer   = '1.2.0'
 $Skip     = @('DragbagsAddonUpdater')          # repos that are not addons
 # Helper apps: one file attached to an addon's release. Its version is the release version.
 $Apps     = @(
-    @{ Repo = 'ProfessionPal'; Asset = 'MarketLedgerCompanion.pyw'; Title = 'Market Ledger Companion'
+    @{ Repo = 'MarketLedger'; Asset = 'MarketLedgerCompanion.pyw'; Title = 'Market Ledger Companion'
        Folder = 'MarketLedgerCompanion'; File = 'Market Ledger Companion.pyw'
-       Description = 'Desktop app for the ProfessionPal Market Ledger: asks an AI what to sell and writes the plan into the addon. Needs Python 3.' }
+       Description = 'Desktop app for Market Ledger: asks an AI what to sell and writes the plan into the addon. Needs Python 3.' }
 )
 # Files inside an addon folder that belong to the player and survive an update.
-$Keep     = @{ ProfessionPal = @('LedgerPlan.lua') }
+$Keep     = @{ MarketLedger = @('LedgerPlan.lua'); ProfessionPal = @('LedgerPlan.lua') }
 # Where helper apps live. New installs go in the first one; an existing copy in any of them is updated in place
 # (Documents can be the OneDrive folder or the plain one in the user profile).
 $AppsRoots  = @([Environment]::GetFolderPath('MyDocuments'), (Join-Path $env:USERPROFILE 'Documents')) | Select-Object -Unique

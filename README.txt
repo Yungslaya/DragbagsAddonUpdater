@@ -1,7 +1,12 @@
-﻿Dragbags Addon Updater 1.1.0
+Dragbags Addon Updater 1.2.0
 ============================
 
 One click keeps every Yungslaya WoW: Forever addon up to date.
+
+NEW IN 1.2.0
+------------
+Market Ledger is now its own addon and shows up in the list.
+The Market Ledger Companion app now comes with it.
 
 NEW IN 1.1.0
 ------------
@@ -60,6 +65,7 @@ Source: https://github.com/Yungslaya/DragbagsAddonUpdater
 THE ADDONS
 ----------
 ProfessionPal - profession guides, materials and gear lists. /prof
+Market Ledger - what to auction, vendor, craft, keep or farm. /ledger
 DBagsAlerts - class alerts and bars. Formerly ProtAlerts. /pa
 DragsHedgeFund - gold goals and savings. /gg
 
