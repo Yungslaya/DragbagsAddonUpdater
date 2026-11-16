@@ -5,8 +5,6 @@
   - Finds your WoW: Forever AddOns folder by itself (or lets you pick it).
   - Lists every addon Yungslaya publishes on GitHub (each repo's latest release .zip).
   - Updates the ones you have, installs the ones you pick.
-  - Also installs and updates helper apps that ship with an addon release
-    (the Market Ledger Companion).
   - Optional: checks and updates by itself every time you log in to Windows.
 
   It only touches addon folders that come from Yungslaya's GitHub releases.
@@ -29,14 +27,10 @@ $ErrorActionPreference = 'Stop'
 $Owner    = 'Yungslaya'
 $AppName  = 'DragbagsAddonUpdater'
 $AppTitle = 'Dragbags Addon Updater'
-$AppVer   = '1.2.0'
+$AppVer   = '1.2.1'
 $Skip     = @('DragbagsAddonUpdater')          # repos that are not addons
 # Helper apps: one file attached to an addon's release. Its version is the release version.
-$Apps     = @(
-    @{ Repo = 'MarketLedger'; Asset = 'MarketLedgerCompanion.pyw'; Title = 'Market Ledger Companion'
-       Folder = 'MarketLedgerCompanion'; File = 'Market Ledger Companion.pyw'
-       Description = 'Desktop app for Market Ledger: asks an AI what to sell and writes the plan into the addon. Needs Python 3.' }
-)
+$Apps     = @()  # No desktop helper apps are currently offered.
 # Files inside an addon folder that belong to the player and survive an update.
 $Keep     = @{ MarketLedger = @('LedgerPlan.lua'); ProfessionPal = @('LedgerPlan.lua') }
 # Where helper apps live. New installs go in the first one; an existing copy in any of them is updated in place
@@ -565,9 +559,14 @@ function Load-List {
     try { $script:items = @(Get-Status $script:addons) }
     catch { Set-Status ("Couldn't reach GitHub. Check your internet and click 'Check again'.") $gold; return }
     $ready = 0; $ahead = 0; $unknown = 0
+    # Tell ProfessionPal players Market Ledger works with it. Text only: nothing is ticked or installed for them.
+    $hasPal = @($script:items | Where-Object { $_.Name -eq 'ProfessionPal' -and $_.Installed }).Count -gt 0
     foreach ($a in $script:items) {
         $label = $a.Name
         if ($a.Kind -eq 'app') { $label += ' (app)' }
+        if ($hasPal -and $a.Kind -eq 'addon' -and $a.Name -eq 'MarketLedger' -and -not $a.Installed) {
+            $label += ' - works with ProfessionPal'
+        }
         $row = New-Object System.Windows.Forms.ListViewItem($label)
         $have = '-'
         if ($a.Installed) { $have = $a.Installed }

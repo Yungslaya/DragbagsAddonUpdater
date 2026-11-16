@@ -2,6 +2,14 @@
 
 Every released version, newest first.
 
+## 1.2.1
+
+- Removed the unused desktop helper app from the install list. Existing files and saved plans are kept.
+
+- If you have ProfessionPal but not Market Ledger, the list notes that Market Ledger **works with ProfessionPal**. Nothing is ticked or installed unless you choose it.
+
+Download and extract the new updater ZIP, close the old window, and open the new `.bat` file. The title should show **1.2.1**.
+
 ## 1.2.0 (2026-11-14)
 
 - **Market Ledger** is now its own addon and shows up in the list. Tick it to install it.
