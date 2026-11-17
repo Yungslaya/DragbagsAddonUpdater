@@ -1,9 +1,9 @@
 {
   "MarketLedger": {
-    "version": "1.4.1",
+    "version": "1.4.5",
     "project_id": 1806441,
-    "display_name": "Market Ledger 1.4.1",
-    "sha256": "a8795f60ab684727b77268b7848071d804ed4b8a6c03651e96c2505962bf5b60",
+    "display_name": "Market Ledger 1.4.5",
+    "sha256": "837857f6fd3fd665fd0bbd0389aeabd0fe0f7db715d77f63d6b079ac477a938c",
     "changelog": "MarketLedger-changes.md",
     "relations": [
       {

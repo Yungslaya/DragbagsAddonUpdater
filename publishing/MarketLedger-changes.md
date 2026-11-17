@@ -1,7 +1,9 @@
-Market Ledger 1.4.1
+Market Ledger 1.4.5
 
-- Fixed prices for items sold in stacks (like Upper Map Fragment). They were shown far too cheap, so Market Ledger could suggest vendoring something worth silver.
-- Prepare now checks the lowest price other players are asking right now and fills the sell form with it, so an older scan no longer makes you undercut or overprice. Your own listings are skipped.
-- If the live price is less than half your scan price, or a lone listing is far above the usual price, Prepare keeps your scan price and tells you to check before posting.
+- Prepare now lists just under the lowest other listing so yours sells first. The new button next to Scale picks how much: smallest (1 copper for trade goods, 1 silver for other items), 1%, 2%, 5%, or match the lowest. Troll listings are still ignored, and with no other listings your scan price is used.
+- Prepare checks the live lowest price on every item. Before, it could quietly use your older scan price instead.
+- Trade goods (ore, stone, cloth and so on) post your whole amount across your bag stacks instead of stopping at 20. WoW only posts from normal bags, so Market Ledger tells you if some are in your reagent bag or quiver.
+- Prices are easier to read: 8s 64c instead of 0g 08s 64c.
+- Fixed a Prepare button that kept saying Create Auction after preparing a different item, and long messages running past the window.
 
-Run Scan Bags after updating to replace the wrong prices. Prices are asking prices, not guaranteed sales. Type /reload after updating.
+Prices are asking prices, not guaranteed sales. Type /reload after updating.
