@@ -28,7 +28,18 @@ def cf_request(path, token, data=None, content_type=None):
         with urllib.request.build_opener(NoRedirect()).open(req, timeout=90) as r:
             return json.load(r)
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f'CurseForge HTTP {e.code}; inspect account permissions before retrying.') from None
+        detail = ''
+        # API validation errors are actionable; expose only whitelisted scalar
+        # error fields, with the credential redacted, never headers or requests.
+        try:
+            payload = json.loads(e.read(16384))
+            if isinstance(payload, dict):
+                parts = [str(payload[k]) for k in ('errorCode', 'errorMessage', 'message', 'error')
+                         if isinstance(payload.get(k), (str, int))]
+                detail = ' '.join(parts).replace(token, '[redacted]')[:1000]
+        except (ValueError, UnicodeError):
+            pass
+        raise RuntimeError(f'CurseForge HTTP {e.code}: {detail or "request rejected"}') from None
     except (urllib.error.URLError, TimeoutError):
         raise RuntimeError('CurseForge connection failed. If uploading, inspect the project files before retrying; the upload may have arrived.') from None
 
