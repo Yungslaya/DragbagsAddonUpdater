@@ -8,7 +8,7 @@
     "relations": [
       {
         "slug": "professionpal",
-        "projectID": "1791033",
+        "projectID": 1791033,
         "type": "optionalDependency"
       }
     ]
@@ -22,7 +22,7 @@
     "relations": [
       {
         "slug": "market-ledger",
-        "projectID": "1806441",
+        "projectID": 1806441,
         "type": "optionalDependency"
       }
     ]

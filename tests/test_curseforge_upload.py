@@ -44,6 +44,7 @@ class UploadChecks(unittest.TestCase):
         meta = upload.metadata(config, [{'name': '1.60.1', 'id': 123}])
         self.assertEqual(meta['gameVersions'], [123])
         self.assertEqual(meta['relations']['projects'][0]['type'], 'optionalDependency')
+        self.assertIsInstance(meta['relations']['projects'][0]['projectID'], int)
         for versions in [[], [{'name': '1.60.1', 'id': 1}, {'name': '1.60.1', 'id': 2}]]:
             with self.assertRaises(ValueError):
                 upload.metadata(config, versions)
