@@ -14,10 +14,10 @@
     ]
   },
   "ProfessionPal": {
-    "version": "1.4.3",
+    "version": "1.4.4",
     "project_id": 1791033,
-    "display_name": "ProfessionPal 1.4.3",
-    "sha256": "cbbde7881eafa79fc374ece52a2530c75a08a81db2beecd6d2b1d63f837126bc",
+    "display_name": "ProfessionPal 1.4.4",
+    "sha256": "9d8158e9c63feddf728f2fac199eefd320ff27c29cd30440febdd2a78ab84d70",
     "changelog": "ProfessionPal-changes.md",
     "relations": [
       {
